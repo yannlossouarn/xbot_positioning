@@ -108,10 +108,16 @@ void onImu(const sensor_msgs::Imu::ConstPtr &msg) {
     double yaw_rate = msg->angular_velocity.z - gyro_offset;
 
     // Use configured threshold (param) rather than a magic number if possible
-    if (std::fabs(vx) < min_speed) {   // min_speed already read from params
-        // Stop integrating at rest
-        yaw_rate = 0.0;
+    ROS_INFO_STREAM("Yann: minspeed=" << min_speed);
+
+    const double deadband = 0.02; // rad/s ~ 1.1°/s (tune)
+    ROS_INFO_STREAM("Yann: std::fabs(yaw_rate)=" << std::fabs(yaw_rate));
+    ROS_INFO_STREAM("Yann: deadband=" << deadband);
+    if (std::fabs(yaw_rate) < deadband) {
+        ROS_INFO_STREAM("Yann: std::fabs(yaw_rate) < deadband : forget it");
+        yaw_rate = 0.0;           // kill only micro-rates (likely bias)
     }
+
     core.predict(vx, yaw_rate, dt);
 
     // Keep updateSpeed consistent with what was predicted
