@@ -104,8 +104,18 @@ void onImu(const sensor_msgs::Imu::ConstPtr &msg) {
         }
     }
 
-    core.predict(vx, msg->angular_velocity.z - gyro_offset, (msg->header.stamp - last_imu.header.stamp).toSec());
-    auto x = core.updateSpeed(vx, msg->angular_velocity.z - gyro_offset, 0.01);
+    double dt = (msg->header.stamp - last_imu.header.stamp).toSec();
+    double yaw_rate = msg->angular_velocity.z - gyro_offset;
+
+    // Use configured threshold (param) rather than a magic number if possible
+    if (std::fabs(vx) < min_speed) {   // min_speed already read from params
+        // Stop integrating at rest
+        yaw_rate = 0.0;
+    }
+    core.predict(vx, yaw_rate, dt);
+
+    // Keep updateSpeed consistent with what was predicted
+    auto x = core.updateSpeed(vx, yaw_rate, 0.01);
 
     odometry.header.stamp = ros::Time::now();
     odometry.header.seq++;
@@ -230,7 +240,7 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
     }
     // TODO fuse with high covariance?
     if ((msg->flags & (xbot_msgs::AbsolutePose::FLAG_GPS_RTK_FIXED)) == 0) {
-        ROS_INFO_STREAM_THROTTLE(1, "Dropped GPS update, since it's not RTK Fixed");
+        ROS_INFO_STREAM_THROTTLE(1, "YannTest: Dropped GPS update, since it's not RTK Fixed");
         return;
     }
 
