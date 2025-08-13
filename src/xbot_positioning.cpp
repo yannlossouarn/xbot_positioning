@@ -76,6 +76,51 @@ int gps_message_throttle = 1;
 
 ros::Time last_gps_time(0.0);
 
+// Map GPS "position_accuracy" + flags to a sensible std-dev (sigma, in meters)
+// Smaller sigma = trust more, larger sigma = trust less.
+inline double gpsPositionSigma(const xbot_msgs::AbsolutePose& msg)
+{
+    // message semantics:
+    // - msg.position_accuracy is in meters (already 1-sigma in most GNSS APIs)
+    // - flags signal RTK FIX/FLOAT
+    const bool is_rtk     = (msg.flags & xbot_msgs::AbsolutePose::FLAG_GPS_RTK) != 0;
+    const bool is_rtk_fix = (msg.flags & xbot_msgs::AbsolutePose::FLAG_GPS_RTK_FIXED) != 0;
+    const bool is_rtk_flt = (msg.flags & xbot_msgs::AbsolutePose::FLAG_GPS_RTK_FLOAT) != 0;
+
+    double acc = msg.position_accuracy;              // meters
+    if (!(acc > 0.0) || !std::isfinite(acc)) acc = 5.0; // fallback if unknown
+
+    // Base scaling by fix type (tune to taste)
+    double scale = 10.0;  // default for poor fixes
+    if (is_rtk_fix)      scale = 1.0;   // tight
+    else if (is_rtk_flt) scale = 3.0;   // moderate
+    else if (is_rtk)     scale = 5.0;   // any other RTK flagged state
+
+    double sigma = scale * acc;
+
+    // Clamp to reasonable bounds so we never go insane
+    const double MIN_SIGMA = 0.005;  // 5 mm hard lower bound
+    const double MAX_SIGMA = 500.0;  // 500 m hard upper bound
+    if (sigma < MIN_SIGMA) sigma = MIN_SIGMA;
+    if (sigma > MAX_SIGMA) sigma = MAX_SIGMA;
+    return sigma;
+}
+
+// Optional: map heading accuracy to a std-dev for your heading update
+inline double gpsHeadingSigma(const xbot_msgs::AbsolutePose& msg)
+{
+    // heading_accuracy usually in radians (check your driver; your covariance uses it as-is)
+    double acc = msg.orientation_accuracy; // radians
+    if (!(acc > 0.0) || !std::isfinite(acc)) acc = 0.5; // fallback ~28.6°
+    // Scale by motion validity if you only have "course over ground"
+    if (!msg.motion_vector_valid) acc = std::max(acc, 0.5);
+    // Clamp
+    const double MIN = 0.5 * M_PI/180.0; // 0.5°
+    const double MAX = 60.0 * M_PI/180.0; // 60°
+    acc = std::min(std::max(acc, MIN), MAX);
+    return acc;
+}
+
 
 void onImu(const sensor_msgs::Imu::ConstPtr &msg) {
     if (!has_gyro) {
@@ -110,13 +155,12 @@ void onImu(const sensor_msgs::Imu::ConstPtr &msg) {
     double yaw_rate = msg->angular_velocity.z - gyro_offset;
 
     // Use configured threshold (param) rather than a magic number if possible
-    ROS_INFO_STREAM("Yann: minspeed=" << min_speed);
+
 
     const double deadband = 0.01; // rad/s ~ 1.1°/s (tune)
-    ROS_INFO_STREAM("Yann: std::fabs(yaw_rate)=" << std::fabs(yaw_rate));
-    ROS_INFO_STREAM("Yann: deadband=" << deadband);
+
     if (std::fabs(yaw_rate) < deadband) {
-        ROS_INFO_STREAM("Yann: std::fabs(yaw_rate) < deadband : forget it");
+        // ROS_INFO_STREAM("std::fabs(yaw_rate) < deadband : forget it");
         yaw_rate = 0.0;           // kill only micro-rates (likely bias)
     }
 
@@ -292,18 +336,21 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
         gps_outlier_count = 0;
         valid_gps_samples++;
 
+        double pos_sigma = gpsPositionSigma(*msg);
+        ROS_INFO_STREAM("GPS position accuracy: " << pos_sigma << " m");
+
         if (!has_gps && valid_gps_samples > 10) {
             ROS_INFO_STREAM("GPS data now valid");
             ROS_INFO_STREAM(
                 "First GPS data, moving kalman filter to " << msg->pose.pose.position.x << ", " << msg->pose.pose.
                 position.y);
             // we don't even have gps yet, set odometry to first estimate
-            core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, 0.001);
+            core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, pos_sigma);
 
             has_gps = true;
         } else if (has_gps) {
             // gps was valid before, we apply the filter
-            core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, 500.0);
+            core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, pos_sigma);
             if (publish_debug) {
                 auto m = core.om2.h(core.ekf.getState());
                 geometry_msgs::Vector3 dbg;
