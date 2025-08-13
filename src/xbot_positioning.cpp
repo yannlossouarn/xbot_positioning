@@ -41,6 +41,8 @@ xbot_msgs::WheelTick last_ticks;
 bool has_gps;
 xbot_msgs::AbsolutePose last_gps;
 
+bool first_gps_fix = true;
+
 // True, if last_imu is valid and gyro_offset is valid
 bool has_gyro;
 sensor_msgs::Imu last_imu;
@@ -240,6 +242,7 @@ bool setPose(xbot_positioning::SetPoseSrvRequest &req, xbot_positioning::SetPose
 }
 
 void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
+
     if (!gps_enabled) {
         ROS_INFO_STREAM_THROTTLE(gps_message_throttle, "dropping GPS update, since gps_enabled = false.");
         return;
@@ -275,10 +278,12 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
 
     double distance_to_last_gps = (last_gps_pos - gps_pos).length();
 
-    if (distance_to_last_gps < 5.0) {
+    if (first_gps_fix || distance_to_last_gps < 5.0) {
         // inlier, we treat it normally
         // store the gps as last
         last_gps = *msg;
+        first_gps_fix = false;
+
         last_gps_time = ros::Time::now();
 
         gps_outlier_count = 0;
