@@ -278,6 +278,9 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
 
     double distance_to_last_gps = (last_gps_pos - gps_pos).length();
 
+    ROS_INFO_STREAM("YL : first_gps_fix = " << first_gps_fix);
+    ROS_INFO_STREAM("YL : distance_to_last_gps = " << distance_to_last_gps);
+
     if (first_gps_fix || distance_to_last_gps < 5.0) {
         // inlier, we treat it normally
         // store the gps as last
