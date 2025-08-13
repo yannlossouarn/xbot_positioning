@@ -110,7 +110,7 @@ void onImu(const sensor_msgs::Imu::ConstPtr &msg) {
     // Use configured threshold (param) rather than a magic number if possible
     ROS_INFO_STREAM("Yann: minspeed=" << min_speed);
 
-    const double deadband = 0.02; // rad/s ~ 1.1°/s (tune)
+    const double deadband = 0.01; // rad/s ~ 1.1°/s (tune)
     ROS_INFO_STREAM("Yann: std::fabs(yaw_rate)=" << std::fabs(yaw_rate));
     ROS_INFO_STREAM("Yann: deadband=" << deadband);
     if (std::fabs(yaw_rate) < deadband) {
