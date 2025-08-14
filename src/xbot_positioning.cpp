@@ -480,8 +480,8 @@ int main(int argc, char **argv) {
     ros::Subscriber pose_sub = paramNh.subscribe("xb_pose_in", 10, onPose);
     ros::Subscriber wheel_tick_sub = paramNh.subscribe("wheel_ticks_in", 10, onWheelTicks);
 
-    ros::Subscriber map_sub = paramNh.subscribe("xbot_monitoring/map", 1, onMap);          // adjust topic if different
-    ros::Subscriber robot_state_sub = paramNh.subscribe("xbot_monitoring/robot_state", 5, onRobotState); // adjust topic if different
+    ros::Subscriber map_sub = paramNh.subscribe("/xbot_monitoring/map", 1, onMap);          // adjust topic if different
+    ros::Subscriber robot_state_sub = paramNh.subscribe("/xbot_monitoring/robot_state", 5, onRobotState); // adjust topic if different
 
 
     ros::spin();
