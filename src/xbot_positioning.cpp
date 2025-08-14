@@ -22,6 +22,10 @@
 #include "xbot_positioning/SetPoseSrv.h"
 #include "xbot_positioning_core.h"
 
+// YL : added in order to init yaw using map DockHeading
+#include "xbot_msgs/Map.h"
+#include "xbot_msgs/RobotState.h"
+
 ros::Publisher odometry_pub;
 ros::Publisher xbot_absolute_pose_pub;
 
@@ -75,6 +79,12 @@ int valid_gps_samples = 0;
 int gps_message_throttle = 1;
 
 ros::Time last_gps_time(0.0);
+
+// --- YL Dock-yaw init ---
+static bool have_dock_heading = false;
+static double dock_heading = 0.0;          // radians
+static bool yaw_initialized_from_dock = false;
+static bool is_charging_now = false;
 
 // Map GPS "position_accuracy" + flags to a sensible std-dev (sigma, in meters)
 // Smaller sigma = trust more, larger sigma = trust less.
@@ -382,6 +392,35 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
     }
 }
 
+void onMap(const xbot_msgs::Map::ConstPtr& msg)
+{
+    dock_heading = msg->dockHeading;       // assume radians (as used elsewhere)
+    have_dock_heading = true;
+}
+
+void onRobotState(const xbot_msgs::RobotState::ConstPtr& msg)
+{
+    // Remember charging state
+    is_charging_now = msg->is_charging;
+
+    // Only act if: charging, we have a dock heading, and we haven't done this yet
+    if (is_charging_now && have_dock_heading && !yaw_initialized_from_dock)
+    {
+        // Optional: only when "no heading has already been defined".
+        // Many stacks expose a boolean; if you have one, gate here. Otherwise keep it simple.
+        // Example (uncomment if your RobotState exposes it):
+        // if (msg->robot_pose.orientation_valid) return;
+
+        // Keep x,y as-is; set yaw = dock_heading; zero linear/ang speed.
+        auto s = core.getState();          // you already use this in debug
+        core.setState(s.x(), s.y(), dock_heading, 0.0, 0.0);
+
+        yaw_initialized_from_dock = true;
+        ROS_INFO_STREAM("[xbot_positioning] Yaw initialized from DockHeading = "
+                        << dock_heading << " rad while charging.");
+    }
+}
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "xbot_positioning");
 
@@ -432,6 +471,10 @@ int main(int argc, char **argv) {
     ros::Subscriber twist_sub = paramNh.subscribe("twist_in", 10, onTwistIn);
     ros::Subscriber pose_sub = paramNh.subscribe("xb_pose_in", 10, onPose);
     ros::Subscriber wheel_tick_sub = paramNh.subscribe("wheel_ticks_in", 10, onWheelTicks);
+
+    ros::Subscriber map_sub = paramNh.subscribe("xbot_monitoring/map", 1, onMap);          // adjust topic if different
+    ros::Subscriber robot_state_sub = paramNh.subscribe("xbot_monitoring/robot_state", 5, onRobotState); // adjust topic if different
+
 
     ros::spin();
     return 0;
