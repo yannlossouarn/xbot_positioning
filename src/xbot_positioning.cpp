@@ -339,7 +339,7 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
         double pos_sigma = gpsPositionSigma(*msg);
         ROS_INFO_STREAM("GPS position accuracy: " << pos_sigma << " m");
 
-        if (!has_gps && valid_gps_samples > 10) {
+        if (!has_gps) { //  && valid_gps_samples > 10 ; YL : we don't want to wait
             ROS_INFO_STREAM("GPS data now valid");
             ROS_INFO_STREAM(
                 "First GPS data, moving kalman filter to " << msg->pose.pose.position.x << ", " << msg->pose.pose.
@@ -350,6 +350,8 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
             has_gps = true;
         } else if (has_gps) {
             // gps was valid before, we apply the filter
+            ROS_INFO_STREAM("x: " << msg->pose.pose.position.x << " m, y: " << msg->pose.pose.position.y <<
+                            " m, sigma: " << pos_sigma << " m");
             core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, pos_sigma);
             if (publish_debug) {
                 auto m = core.om2.h(core.ekf.getState());
@@ -357,6 +359,7 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
                 dbg.x = m.vx();
                 dbg.y = m.vy();
                 dbg_expected_motion_vector.publish(dbg);
+                ROS_INFO_STREAM("Expected motion vector: " << dbg.x << ", " << dbg.y);
             }
             if (std::sqrt(std::pow(msg->motion_vector.x, 2) + std::pow(msg->motion_vector.y, 2)) >= min_speed) {
                 core.updateOrientation2(msg->motion_vector.x, msg->motion_vector.y, 10000.0);
