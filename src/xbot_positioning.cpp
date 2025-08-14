@@ -400,12 +400,16 @@ void onMap(const xbot_msgs::Map::ConstPtr& msg)
 
 void onRobotState(const xbot_msgs::RobotState::ConstPtr& msg)
 {
+    ROS_INFO_STREAM("[xbot_positioning] onRobotState");
     // Remember charging state
     is_charging_now = msg->is_charging;
-
+    ROS_INFO_STREAM("[xbot_positioning] onRobotState:is_charging_now = " << is_charging_now);
+ROS_INFO_STREAM("[xbot_positioning] onRobotState:have_dock_heading = " << have_dock_heading);
+ROS_INFO_STREAM("[xbot_positioning] onRobotState:yaw_initialized_from_dock = " << yaw_initialized_from_dock);
     // Only act if: charging, we have a dock heading, and we haven't done this yet
     if (is_charging_now && have_dock_heading && !yaw_initialized_from_dock)
     {
+        ROS_INFO_STREAM("[xbot_positioning] onRobotState, do initialization from DockHeading ");
         // Optional: only when "no heading has already been defined".
         // Many stacks expose a boolean; if you have one, gate here. Otherwise keep it simple.
         // Example (uncomment if your RobotState exposes it):
@@ -417,6 +421,10 @@ void onRobotState(const xbot_msgs::RobotState::ConstPtr& msg)
 
         yaw_initialized_from_dock = true;
         ROS_INFO_STREAM("[xbot_positioning] Yaw initialized from DockHeading = "
+                        << dock_heading << " rad while charging.");
+    }
+    else {
+        ROS_INFO_STREAM("[xbot_positioning] Yaw do NOT initialize from DockHeading = "
                         << dock_heading << " rad while charging.");
     }
 }
