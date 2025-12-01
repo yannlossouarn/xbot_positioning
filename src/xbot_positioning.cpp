@@ -298,19 +298,19 @@ bool setPose(xbot_positioning::SetPoseSrvRequest &req, xbot_positioning::SetPose
 void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
 
     if (!gps_enabled) {
-        ROS_INFO_STREAM_THROTTLE(gps_message_throttle, "dropping GPS update, since gps_enabled = false.");
+        // ROS_INFO_STREAM_THROTTLE(gps_message_throttle, "dropping GPS update, since gps_enabled = false.");
         return;
     }
     // TODO fuse with high covariance?
     if ((msg->flags & (xbot_msgs::AbsolutePose::FLAG_GPS_RTK_FIXED)) == 0) {
-        ROS_INFO_STREAM_THROTTLE(1, "YannTest: Dropped GPS update, since it's not RTK Fixed");
+        // ROS_INFO_STREAM_THROTTLE(1, "YannTest: Dropped GPS update, since it's not RTK Fixed");
         return;
     }
 
     if (msg->position_accuracy > max_gps_accuracy) {
-        ROS_INFO_STREAM_THROTTLE(
+        /* ROS_INFO_STREAM_THROTTLE(
             1, "Dropped GPS update, since it's not accurate enough. Accuracy was: " << msg->position_accuracy <<
-            ", limit is:" << max_gps_accuracy);
+            ", limit is:" << max_gps_accuracy); */
         return;
     }
 
@@ -332,8 +332,8 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
 
     double distance_to_last_gps = (last_gps_pos - gps_pos).length();
 
-    ROS_INFO_STREAM("YL : first_gps_fix = " << first_gps_fix);
-    ROS_INFO_STREAM("YL : distance_to_last_gps = " << distance_to_last_gps);
+    // ROS_INFO_STREAM("YL : first_gps_fix = " << first_gps_fix);
+    // ROS_INFO_STREAM("YL : distance_to_last_gps = " << distance_to_last_gps);
 
     if (first_gps_fix || distance_to_last_gps < 5.0) {
         // inlier, we treat it normally
@@ -347,11 +347,11 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
         valid_gps_samples++;
 
         double pos_sigma = gpsPositionSigma(*msg);
-        ROS_INFO_STREAM("GPS position accuracy: " << pos_sigma << " m");
+        // ROS_INFO_STREAM("GPS position accuracy: " << pos_sigma << " m");
 
         if (!has_gps) { //  && valid_gps_samples > 10 ; YL : we don't want to wait
-            ROS_INFO_STREAM("GPS data now valid");
-            ROS_INFO_STREAM(
+            // ROS_INFO_STREAM("GPS data now valid");
+            // ROS_INFO_STREAM(
                 "First GPS data, moving kalman filter to " << msg->pose.pose.position.x << ", " << msg->pose.pose.
                 position.y);
             // we don't even have gps yet, set odometry to first estimate
@@ -360,8 +360,8 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
             has_gps = true;
         } else if (has_gps) {
             // gps was valid before, we apply the filter
-            ROS_INFO_STREAM("x: " << msg->pose.pose.position.x << " m, y: " << msg->pose.pose.position.y <<
-                            " m, sigma: " << pos_sigma << " m");
+            /* ROS_INFO_STREAM("x: " << msg->pose.pose.position.x << " m, y: " << msg->pose.pose.position.y <<
+                            " m, sigma: " << pos_sigma << " m"); */
             core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, pos_sigma);
             if (publish_debug) {
                 auto m = core.om2.h(core.ekf.getState());
@@ -369,7 +369,7 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
                 dbg.x = m.vx();
                 dbg.y = m.vy();
                 dbg_expected_motion_vector.publish(dbg);
-                ROS_INFO_STREAM("Expected motion vector: " << dbg.x << ", " << dbg.y);
+                // ROS_INFO_STREAM("Expected motion vector: " << dbg.x << ", " << dbg.y);
             }
             if (std::sqrt(std::pow(msg->motion_vector.x, 2) + std::pow(msg->motion_vector.y, 2)) >= min_speed) {
                 core.updateOrientation2(msg->motion_vector.x, msg->motion_vector.y, 10000.0);
@@ -400,16 +400,16 @@ void onMap(const xbot_msgs::Map::ConstPtr& msg)
 
 void onRobotState(const xbot_msgs::RobotState::ConstPtr& msg)
 {
-    ROS_INFO_STREAM("[xbot_positioning] onRobotState");
+    // ROS_INFO_STREAM("[xbot_positioning] onRobotState");
     // Remember charging state
     is_charging_now = msg->is_charging;
-    ROS_INFO_STREAM("[xbot_positioning] onRobotState:is_charging_now = " << is_charging_now);
-ROS_INFO_STREAM("[xbot_positioning] onRobotState:have_dock_heading = " << have_dock_heading);
-ROS_INFO_STREAM("[xbot_positioning] onRobotState:yaw_initialized_from_dock = " << yaw_initialized_from_dock);
+    // ROS_INFO_STREAM("[xbot_positioning] onRobotState:is_charging_now = " << is_charging_now);
+    // ROS_INFO_STREAM("[xbot_positioning] onRobotState:have_dock_heading = " << have_dock_heading);
+    // ROS_INFO_STREAM("[xbot_positioning] onRobotState:yaw_initialized_from_dock = " << yaw_initialized_from_dock);
     // Only act if: charging, we have a dock heading, and we haven't done this yet
     if (is_charging_now && have_dock_heading && !yaw_initialized_from_dock)
     {
-        ROS_INFO_STREAM("[xbot_positioning] onRobotState, do initialization from DockHeading ");
+        // ROS_INFO_STREAM("[xbot_positioning] onRobotState, do initialization from DockHeading ");
         // Optional: only when "no heading has already been defined".
         // Many stacks expose a boolean; if you have one, gate here. Otherwise keep it simple.
         // Example (uncomment if your RobotState exposes it):
@@ -420,12 +420,12 @@ ROS_INFO_STREAM("[xbot_positioning] onRobotState:yaw_initialized_from_dock = " <
         core.setState(s.x(), s.y(), dock_heading, 0.0, 0.0);
 
         yaw_initialized_from_dock = true;
-        ROS_INFO_STREAM("[xbot_positioning] Yaw initialized from DockHeading = "
-                        << dock_heading << " rad while charging.");
+        /* ROS_INFO_STREAM("[xbot_positioning] Yaw initialized from DockHeading = "
+                        << dock_heading << " rad while charging."); */
     }
     else {
-        ROS_INFO_STREAM("[xbot_positioning] Yaw do NOT initialize from DockHeading = "
-                        << dock_heading << " rad while charging.");
+        /* ROS_INFO_STREAM("[xbot_positioning] Yaw do NOT initialize from DockHeading = "
+                        << dock_heading << " rad while charging."); */
     }
 }
 
