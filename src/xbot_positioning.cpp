@@ -308,9 +308,9 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
     }
 
     if (msg->position_accuracy > max_gps_accuracy) {
-        /* ROS_INFO_STREAM_THROTTLE(
-            1, "Dropped GPS update, since it's not accurate enough. Accuracy was: " << msg->position_accuracy <<
-            ", limit is:" << max_gps_accuracy); */
+        // ROS_INFO_STREAM_THROTTLE(
+        //    1, "Dropped GPS update, since it's not accurate enough. Accuracy was: " << msg->position_accuracy <<
+        //    ", limit is:" << max_gps_accuracy);
         return;
     }
 
@@ -360,8 +360,8 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
             has_gps = true;
         } else if (has_gps) {
             // gps was valid before, we apply the filter
-            /* ROS_INFO_STREAM("x: " << msg->pose.pose.position.x << " m, y: " << msg->pose.pose.position.y <<
-                            " m, sigma: " << pos_sigma << " m"); */
+            // ROS_INFO_STREAM("x: " << msg->pose.pose.position.x << " m, y: " << msg->pose.pose.position.y <<
+            //                " m, sigma: " << pos_sigma << " m");
             core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, pos_sigma);
             if (publish_debug) {
                 auto m = core.om2.h(core.ekf.getState());
@@ -420,12 +420,12 @@ void onRobotState(const xbot_msgs::RobotState::ConstPtr& msg)
         core.setState(s.x(), s.y(), dock_heading, 0.0, 0.0);
 
         yaw_initialized_from_dock = true;
-        /* ROS_INFO_STREAM("[xbot_positioning] Yaw initialized from DockHeading = "
-                        << dock_heading << " rad while charging."); */
+        // ROS_INFO_STREAM("[xbot_positioning] Yaw initialized from DockHeading = "
+        //                << dock_heading << " rad while charging.");
     }
     else {
-        /* ROS_INFO_STREAM("[xbot_positioning] Yaw do NOT initialize from DockHeading = "
-                        << dock_heading << " rad while charging."); */
+        // ROS_INFO_STREAM("[xbot_positioning] Yaw do NOT initialize from DockHeading = "
+        //                << dock_heading << " rad while charging.");
     }
 }
 
