@@ -352,8 +352,8 @@ void onPose(const xbot_msgs::AbsolutePose::ConstPtr &msg) {
         if (!has_gps) { //  && valid_gps_samples > 10 ; YL : we don't want to wait
             // ROS_INFO_STREAM("GPS data now valid");
             // ROS_INFO_STREAM(
-                "First GPS data, moving kalman filter to " << msg->pose.pose.position.x << ", " << msg->pose.pose.
-                position.y);
+            //    "First GPS data, moving kalman filter to " << msg->pose.pose.position.x << ", " << msg->pose.pose.
+            //    position.y);
             // we don't even have gps yet, set odometry to first estimate
             core.updatePosition(msg->pose.pose.position.x, msg->pose.pose.position.y, pos_sigma);
 
